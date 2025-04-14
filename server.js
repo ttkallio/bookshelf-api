@@ -18,7 +18,6 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // Ensure dates are handled correctly, especially if your DB/server are in different timezones
   // timezone: "+00:00", // Example: UTC
 });
 
@@ -41,18 +40,52 @@ app.get("/api/books", async (req, res) => {
   }
 });
 
+// GET /api/books/:id - Retrieve a single book by ID
+app.get("/api/books/:id", async (req, res) => {
+  // Extract the book ID from the route parameters
+  const { id } = req.params;
+  console.log(`Received request: GET /api/books/${id}`);
+
+  // Basic validation for ID format if needed (e.g., check if it's a valid UUID)
+  // if (!isValidUUID(id)) { // Assuming isValidUUID function exists
+  //   return res.status(400).json({ error: "Invalid book ID format." });
+  // }
+
+  try {
+    // SQL query to select a book by its ID - use placeholder
+    const sql = "SELECT * FROM books WHERE id = ?";
+    const params = [id];
+
+    // Execute the query
+    const [rows] = await pool.query(sql, params);
+
+    // Check if a book was found
+    if (rows.length === 0) {
+      // If no rows returned, send a 404 Not Found response
+      console.log(`Book not found for ID: ${id}`);
+      res.status(404).json({ error: "Book not found" });
+    } else {
+      // If a book was found, send it back as JSON
+      console.log(`Book found for ID: ${id}`);
+      res.json(rows[0]); // Send the first (and only) row
+    }
+  } catch (error) {
+    console.error(`Error fetching book with ID ${id}:`, error);
+    res.status(500).json({ error: "Error fetching book from database" });
+  }
+});
+
+
 // POST /api/books - Add a new book
 app.post("/api/books", async (req, res) => {
   console.log("Received request: POST /api/books");
-  // Extract book data from request body
   const { title, author, listType, genre, yearPublished, rating, notes } = req.body;
 
-  // --- Basic Input Validation ---
+  // Validation
   if (!title || !author || !listType) {
     console.error("Validation Failed: Missing required fields (title, author, listType)");
     return res.status(400).json({ error: "Missing required fields: title, author, and listType are required." });
   }
-  // Add more specific validation if needed (e.g., listType is 'owned' or 'want', rating is 1-5)
   if (!["owned", "want"].includes(listType)) {
       console.error(`Validation Failed: Invalid listType: ${listType}`);
       return res.status(400).json({ error: "Invalid listType. Must be 'owned' or 'want'." });
@@ -61,58 +94,31 @@ app.post("/api/books", async (req, res) => {
       console.error(`Validation Failed: Invalid rating: ${rating}`);
       return res.status(400).json({ error: "Invalid rating. Must be a number between 1 and 5." });
   }
-  // --- End Validation ---
 
-  // Generate a unique ID for the new book
   const newBookId = uuidv4();
-  // Get current timestamp for dateAdded (MySQL handles this via DEFAULT, but good practice)
   const dateAdded = new Date();
-
-  // SQL query to insert the new book - using placeholders (?) for security
   const insertSql = `
     INSERT INTO books
       (id, title, author, genre, yearPublished, rating, notes, listType, dateAdded)
     VALUES
       (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
-  // Parameters array matching the placeholders
   const params = [
-    newBookId,
-    title,
-    author,
-    genre || null, // Use null for optional fields if not provided
-    yearPublished || null,
-    rating || null,
-    notes || null,
-    listType,
-    dateAdded // Pass the generated timestamp
+    newBookId, title, author, genre || null, yearPublished || null,
+    rating || null, notes || null, listType, dateAdded
   ];
 
   try {
-    // Execute the insert query
     const [result] = await pool.query(insertSql, params);
-    console.log("Insert result:", result);
-
-    // Check if the insert was successful (1 row affected)
     if (result.affectedRows === 1) {
-      // Construct the newly created book object to send back
-      // (combining generated ID/date with received data)
       const newBook = {
-        id: newBookId,
-        title,
-        author,
-        genre: genre || null,
-        yearPublished: yearPublished || null,
-        rating: rating || null,
-        notes: notes || null,
-        listType,
-        dateAdded // Use the JS Date object here
+        id: newBookId, title, author, genre: genre || null,
+        yearPublished: yearPublished || null, rating: rating || null,
+        notes: notes || null, listType, dateAdded
       };
       console.log("Book added successfully:", newBookId);
-      // Send 201 Created status and the new book object
       res.status(201).json(newBook);
     } else {
-      // Should not happen with valid SQL, but handle just in case
       console.error("Error adding book: Insert query affected 0 rows.");
       res.status(500).json({ error: "Failed to add book to database." });
     }
@@ -123,8 +129,7 @@ app.post("/api/books", async (req, res) => {
 });
 
 
-// --- TODO: Add other API routes for books (GET by ID, PUT, DELETE) ---
-// Example: app.get('/api/books/:id', async (req, res) => { ... });
+// --- TODO: Add other API routes for books (PUT, DELETE) ---
 // Example: app.put('/api/books/:id', async (req, res) => { ... });
 // Example: app.delete('/api/books/:id', async (req, res) => { ... });
 
@@ -146,4 +151,3 @@ pool.query("SELECT 1")
      console.error("Error connecting to MySQL Database:", error);
      process.exit(1);
   });
-
