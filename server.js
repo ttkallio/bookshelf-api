@@ -103,7 +103,7 @@ app.post("/api/books", async (req, res) => {
       console.log("Book added successfully:", newBookId);
       res.status(201).json(newBook);
     } else {
-      throw new Error("Insert query affected 0 rows."); // Throw error if insert failed unexpectedly
+      throw new Error("Insert query affected 0 rows.");
     }
   } catch (error) {
     console.error("Error adding book:", error);
@@ -113,77 +113,45 @@ app.post("/api/books", async (req, res) => {
 
 // PUT /api/books/:id - Update an existing book
 app.put("/api/books/:id", async (req, res) => {
-  // Extract the book ID from the route parameters
   const { id } = req.params;
   console.log(`Received request: PUT /api/books/${id}`);
-
-  // Extract updated book data from request body
   const { title, author, listType, genre, yearPublished, rating, notes } = req.body;
 
-  // --- Basic Input Validation ---
+  // Validation
   if (!title || !author || !listType) {
-    console.error("Validation Failed: Missing required fields (title, author, listType)");
     return res.status(400).json({ error: "Missing required fields: title, author, and listType are required." });
   }
   if (!["owned", "want"].includes(listType)) {
-      console.error(`Validation Failed: Invalid listType: ${listType}`);
       return res.status(400).json({ error: "Invalid listType. Must be 'owned' or 'want'." });
   }
   if (rating !== null && rating !== undefined && (typeof rating !== "number" || rating < 1 || rating > 5)) {
-      console.error(`Validation Failed: Invalid rating: ${rating}`);
       return res.status(400).json({ error: "Invalid rating. Must be a number between 1 and 5." });
   }
-  // --- End Validation ---
 
-  // SQL query to update the book - use placeholders
-  // Note: We update all fields provided, using NULL for optional ones if not sent
   const updateSql = `
     UPDATE books SET
-      title = ?,
-      author = ?,
-      genre = ?,
-      yearPublished = ?,
-      rating = ?,
-      notes = ?,
-      listType = ?
-      -- We don't update id or dateAdded
+      title = ?, author = ?, genre = ?, yearPublished = ?,
+      rating = ?, notes = ?, listType = ?
     WHERE id = ?
   `;
-  // Parameters array matching the placeholders
   const params = [
-    title,
-    author,
-    genre || null,
-    yearPublished || null,
-    rating || null,
-    notes || null,
-    listType,
-    id // ID for the WHERE clause comes last
+    title, author, genre || null, yearPublished || null,
+    rating || null, notes || null, listType, id
   ];
 
   try {
-    // Execute the update query
     const [result] = await pool.query(updateSql, params);
-    console.log("Update result:", result);
-
-    // Check if any row was actually updated
     if (result.affectedRows === 0) {
-      // If no rows affected, the book with the given ID was not found
       console.log(`Book not found for update with ID: ${id}`);
       return res.status(404).json({ error: "Book not found" });
     }
 
-    // If update was successful, fetch the updated book data to return
     const [updatedBookRows] = await pool.query("SELECT * FROM books WHERE id = ?", [id]);
-
     if (updatedBookRows.length === 0) {
-        // Should not happen if affectedRows was > 0, but check just in case
         console.error(`Failed to fetch updated book after update for ID: ${id}`);
         return res.status(500).json({ error: "Failed to retrieve updated book data." });
     }
-
     console.log("Book updated successfully:", id);
-    // Send 200 OK status and the updated book object
     res.json(updatedBookRows[0]);
 
   } catch (error) {
@@ -192,9 +160,37 @@ app.put("/api/books/:id", async (req, res) => {
   }
 });
 
+// DELETE /api/books/:id - Delete a book
+app.delete("/api/books/:id", async (req, res) => {
+  // Extract the book ID from the route parameters
+  const { id } = req.params;
+  console.log(`Received request: DELETE /api/books/${id}`);
 
-// --- TODO: Add DELETE API route ---
-// Example: app.delete('/api/books/:id', async (req, res) => { ... });
+  // SQL query to delete a book by its ID - use placeholder
+  const sql = "DELETE FROM books WHERE id = ?";
+  const params = [id];
+
+  try {
+    // Execute the delete query
+    const [result] = await pool.query(sql, params);
+    console.log("Delete result:", result);
+
+    // Check if any row was actually deleted
+    if (result.affectedRows === 0) {
+      // If no rows affected, the book with the given ID was not found
+      console.log(`Book not found for delete with ID: ${id}`);
+      return res.status(404).json({ error: "Book not found" });
+    }
+
+    // If delete was successful, send a 204 No Content status
+    console.log("Book deleted successfully:", id);
+    res.status(204).send(); // No content to send back
+
+  } catch (error) {
+    console.error(`Error deleting book with ID ${id}:`, error);
+    res.status(500).json({ error: "Error deleting book from database" });
+  }
+});
 
 
 // --- Basic Root Route ---
