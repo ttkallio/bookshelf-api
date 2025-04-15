@@ -184,7 +184,7 @@ app.delete("/api/books/:id", async (req, res) => {
 
     // If delete was successful, send a 204 No Content status
     console.log("Book deleted successfully:", id);
-    res.status(204).send(); // No content to send back
+    res.status(204).send(); // Standard practice for successful DELETE
 
   } catch (error) {
     console.error(`Error deleting book with ID ${id}:`, error);
