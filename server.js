@@ -1,14 +1,13 @@
-// server.js
-require("dotenv").config(); // Load environment variables from .env file
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const mysql = require("mysql2/promise"); // Using the promise wrapper
-const { v4: uuidv4 } = require("uuid"); // Import UUID generator
+const mysql = require("mysql2/promise");
+const { v4: uuidv4 } = require("uuid");
 
 const app = express();
-const port = process.env.API_PORT || 3001; // Use port from .env or default
+const port = process.env.API_PORT || 3306;
 
-// --- Database Connection Pool ---
+// Database Connection
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -18,16 +17,15 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // timezone: "+00:00", // Example: UTC
 });
 
-// --- Middleware ---
-app.use(cors()); // Enable Cross-Origin Resource Sharing
-app.use(express.json()); // Enable parsing JSON request bodies
+// Middleware
+app.use(cors());
+app.use(express.json());
 
-// --- API Routes ---
+// APIs
 
-// GET /api/books - Retrieve all books
+// GET
 app.get("/api/books", async (req, res) => {
   console.log("Received request: GET /api/books");
   try {
@@ -40,7 +38,6 @@ app.get("/api/books", async (req, res) => {
   }
 });
 
-// GET /api/books/:id - Retrieve a single book by ID
 app.get("/api/books/:id", async (req, res) => {
   const { id } = req.params;
   console.log(`Received request: GET /api/books/${id}`);
@@ -63,12 +60,11 @@ app.get("/api/books/:id", async (req, res) => {
 });
 
 
-// POST /api/books - Add a new book
+// POST
 app.post("/api/books", async (req, res) => {
   console.log("Received request: POST /api/books");
   const { title, author, listType, genre, yearPublished, rating, notes } = req.body;
 
-  // Validation
   if (!title || !author || !listType) {
     return res.status(400).json({ error: "Missing required fields: title, author, and listType are required." });
   }
@@ -111,13 +107,12 @@ app.post("/api/books", async (req, res) => {
   }
 });
 
-// PUT /api/books/:id - Update an existing book
+// PUT
 app.put("/api/books/:id", async (req, res) => {
   const { id } = req.params;
   console.log(`Received request: PUT /api/books/${id}`);
   const { title, author, listType, genre, yearPublished, rating, notes } = req.body;
 
-  // Validation
   if (!title || !author || !listType) {
     return res.status(400).json({ error: "Missing required fields: title, author, and listType are required." });
   }
@@ -160,31 +155,25 @@ app.put("/api/books/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/books/:id - Delete a book
+// DELETE
 app.delete("/api/books/:id", async (req, res) => {
-  // Extract the book ID from the route parameters
   const { id } = req.params;
   console.log(`Received request: DELETE /api/books/${id}`);
 
-  // SQL query to delete a book by its ID - use placeholder
   const sql = "DELETE FROM books WHERE id = ?";
   const params = [id];
 
   try {
-    // Execute the delete query
     const [result] = await pool.query(sql, params);
     console.log("Delete result:", result);
 
-    // Check if any row was actually deleted
     if (result.affectedRows === 0) {
-      // If no rows affected, the book with the given ID was not found
       console.log(`Book not found for delete with ID: ${id}`);
       return res.status(404).json({ error: "Book not found" });
     }
 
-    // If delete was successful, send a 204 No Content status
     console.log("Book deleted successfully:", id);
-    res.status(204).send(); // Standard practice for successful DELETE
+    res.status(204).send();
 
   } catch (error) {
     console.error(`Error deleting book with ID ${id}:`, error);
@@ -193,12 +182,12 @@ app.delete("/api/books/:id", async (req, res) => {
 });
 
 
-// --- Basic Root Route ---
+// Root Route
 app.get("/", (req, res) => {
   res.send("Bookshelf API is running!");
 });
 
-// --- Start Server ---
+// Start the server
 pool.query("SELECT 1")
   .then(() => {
     console.log("MySQL Database connected successfully.");
