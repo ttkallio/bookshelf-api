@@ -1,16 +1,18 @@
-require("dotenv").config();
+// Load .env file 
+require("dotenv").config(); 
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2/promise");
 const { v4: uuidv4 } = require("uuid");
 
 const app = express();
-const port = process.env.API_PORT || 3306;
+// Read API 
+const port = process.env.API_PORT || 3306
 
 // Database Connection
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
+  host: process.env.DB_HOST, 
+  port: process.env.DB_PORT || 3306, 
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
@@ -19,11 +21,12 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-// Middleware
+
 app.use(cors());
+
 app.use(express.json());
 
-// APIs
+// API Routes
 
 // GET
 app.get("/api/books", async (req, res) => {
@@ -38,6 +41,7 @@ app.get("/api/books", async (req, res) => {
   }
 });
 
+// GET by ID
 app.get("/api/books/:id", async (req, res) => {
   const { id } = req.params;
   console.log(`Received request: GET /api/books/${id}`);
@@ -159,19 +163,15 @@ app.put("/api/books/:id", async (req, res) => {
 app.delete("/api/books/:id", async (req, res) => {
   const { id } = req.params;
   console.log(`Received request: DELETE /api/books/${id}`);
-
   const sql = "DELETE FROM books WHERE id = ?";
   const params = [id];
 
   try {
     const [result] = await pool.query(sql, params);
-    console.log("Delete result:", result);
-
     if (result.affectedRows === 0) {
       console.log(`Book not found for delete with ID: ${id}`);
       return res.status(404).json({ error: "Book not found" });
     }
-
     console.log("Book deleted successfully:", id);
     res.status(204).send();
 
@@ -181,13 +181,16 @@ app.delete("/api/books/:id", async (req, res) => {
   }
 });
 
-
-// Root Route
 app.get("/", (req, res) => {
   res.send("Bookshelf API is running!");
 });
 
-// Start the server
+// Start Server 
+if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_DATABASE) {
+    console.error("FATAL ERROR: Database configuration environment variables (DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE) are not set.");
+    process.exit(1);
+}
+
 pool.query("SELECT 1")
   .then(() => {
     console.log("MySQL Database connected successfully.");
