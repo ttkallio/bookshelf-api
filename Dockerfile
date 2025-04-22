@@ -1,23 +1,23 @@
 # Base Image 
-
 FROM node:20-alpine AS base
 
-#Production Stage 
+# Production Stage 
 FROM base AS production
 
-# working directory
+# Working directory
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
 
-# Install production dependencies
+# Install production dependencies only
 RUN npm install --omit=dev --ignore-scripts
 
-# Copy app code into the container
+# Copy app source code
 COPY . .
 
-# port
-EXPOSE 3306
+# Expose correct port
+EXPOSE 8080
 
-# command to run the application
-CMD [ "node", "server.js" ]
+# Command to run the application
+CMD ["node", "server.js"]
