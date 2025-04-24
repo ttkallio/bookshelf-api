@@ -1,0 +1,24 @@
+# buildspec.yml for bookshelf-api (Node.js Back-End for Beanstalk)
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20 # Or the Node.js version your project uses
+    commands:
+      - echo Installing dependencies just to ensure package-lock is potentially updated...
+      # We don't strictly need node_modules for the Beanstalk ZIP
+      - npm install
+  build:
+    commands:
+      - echo Zipping deployment package...
+      # Create a ZIP file containing only necessary files for Beanstalk Node.js platform
+      # Excludes node_modules, .git, .env, buildspec.yml etc.
+      - zip -r deployment_package.zip server.js package.json package-lock.json -x '*node_modules*' '*.git*' '*.env*' 'buildspec.yml' '.gitignore'
+  # post_build: # Optional: Useful for debugging build artifacts
+  #  commands:
+  #    - echo Build completed on `date`
+  #    - ls -l
+artifacts:
+  files:
+    - deployment_package.zip # Output the ZIP file
