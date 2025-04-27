@@ -1,43 +1,33 @@
-// server.js
-require("dotenv").config(); // Load .env file for local development (harmless in production if .env missing)
+require("dotenv").config(); 
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2/promise");
 const { v4: uuidv4 } = require("uuid");
 
 const app = express();
-// Read API port from environment variable or default to 3001
+// Read API port
 const port = process.env.API_PORT || 3001;
 
-// --- Database Connection Pool ---
-// Configure using environment variables for production compatibility
+// Database Connection
 const pool = mysql.createPool({
-  host: process.env.DB_HOST, // Read from environment variable
-  port: process.env.DB_PORT || 3306, // Read from environment variable or default
-  user: process.env.DB_USER, // Read from environment variable
-  password: process.env.DB_PASSWORD, // Read from environment variable
-  database: process.env.DB_DATABASE, // Read from environment variable
+  host: process.env.DB_HOST, 
+  port: process.env.DB_PORT || 3306, 
+  user: process.env.DB_USER, 
+  password: process.env.DB_PASSWORD, 
+  database: process.env.DB_DATABASE, 
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // timezone: "+00:00",
 });
 
-// --- Middleware ---
-// TODO: Configure CORS more strictly for production
+// Middleware 
 app.use(cors());
-/* Example Production CORS Configuration:
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || "YOUR_FRONTEND_DEPLOYMENT_URL", // e.g., https://d123.cloudfront.net
-  optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
-*/
-app.use(express.json()); // Enable parsing JSON request bodies
 
-// --- API Routes ---
+app.use(express.json()); 
 
-// GET /api/books - Retrieve all books
+// APIs
+
+// GET all books
 app.get("/api/books", async (req, res) => {
   console.log("Received request: GET /api/books");
   try {
@@ -50,7 +40,7 @@ app.get("/api/books", async (req, res) => {
   }
 });
 
-// GET /api/books/:id - Retrieve a single book by ID
+// GET a single book
 app.get("/api/books/:id", async (req, res) => {
   const { id } = req.params;
   console.log(`Received request: GET /api/books/${id}`);
@@ -73,12 +63,11 @@ app.get("/api/books/:id", async (req, res) => {
 });
 
 
-// POST /api/books - Add a new book
+// POST
 app.post("/api/books", async (req, res) => {
   console.log("Received request: POST /api/books");
   const { title, author, listType, genre, yearPublished, rating, notes } = req.body;
 
-  // Validation
   if (!title || !author || !listType) {
     return res.status(400).json({ error: "Missing required fields: title, author, and listType are required." });
   }
@@ -121,13 +110,12 @@ app.post("/api/books", async (req, res) => {
   }
 });
 
-// PUT /api/books/:id - Update an existing book
+// PUT
 app.put("/api/books/:id", async (req, res) => {
   const { id } = req.params;
   console.log(`Received request: PUT /api/books/${id}`);
   const { title, author, listType, genre, yearPublished, rating, notes } = req.body;
 
-  // Validation
   if (!title || !author || !listType) {
     return res.status(400).json({ error: "Missing required fields: title, author, and listType are required." });
   }
@@ -170,7 +158,7 @@ app.put("/api/books/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/books/:id - Delete a book
+// DELETE
 app.delete("/api/books/:id", async (req, res) => {
   const { id } = req.params;
   console.log(`Received request: DELETE /api/books/${id}`);
@@ -184,7 +172,7 @@ app.delete("/api/books/:id", async (req, res) => {
       return res.status(404).json({ error: "Book not found" });
     }
     console.log("Book deleted successfully:", id);
-    res.status(204).send(); // Standard practice for successful DELETE
+    res.status(204).send();
 
   } catch (error) {
     console.error(`Error deleting book with ID ${id}:`, error);
@@ -193,32 +181,27 @@ app.delete("/api/books/:id", async (req, res) => {
 });
 
 
-// --- Basic Root Route ---
+// Basic Root and health check
 app.get("/", (req, res) => {
-  // Basic health check / root route response
   console.log("--- GET / request received ---");
   res.send("Bookshelf API is running!");
 });
 
-
-// --- Start Server (Restored Original Logic) ---
-// Verify essential environment variables are set before trying to connect/start
+// Start Server
 if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_DATABASE) {
     console.error("FATAL ERROR: Database configuration environment variables (DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE) are not set.");
-    process.exit(1); // Exit if essential config is missing
+    process.exit(1);
 }
 
-// Check DB connection before starting listener
+// Check DB connection
 pool.query("SELECT 1")
   .then(() => {
     console.log("MySQL Database connected successfully.");
-    // Start listening only after successful DB connection
     app.listen(port, () => {
       console.log(`Bookshelf API server listening on port ${port}`);
     });
   })
   .catch(error => {
-     // Catch errors during the initial DB connection test
      console.error("FATAL ERROR: Error connecting to MySQL Database on startup:", error);
-     process.exit(1); // Exit if DB connection fails on startup
+     process.exit(1);
   });
